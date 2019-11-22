@@ -42,7 +42,7 @@ func readimage(s string) (bool, [4][4]bool) {
 
 	//fmt.Println("")
 
-	out, _ := os.Create(strings.Split(s, "/")[0]+"/" + "_4x4_" + strings.Split(s, "/")[1] + ".bmp")
+	out, _ := os.Create(strings.Split(s, "/")[0] + "/" + "_4x4_" + strings.Split(s, "/")[1] + ".bmp")
 	defer out.Close()
 	_, _ = out.Write(lpp.Bytes())
 	black := []uint8{41, 41, 41}
@@ -56,7 +56,7 @@ func readimage(s string) (bool, [4][4]bool) {
 			pos[y][x] = true
 			for i := range value {
 				if value[i] > black[i] {
-				//	bl = false
+					//	bl = false
 					pos[y][x] = false
 				}
 			}
@@ -117,7 +117,7 @@ func readimage(s string) (bool, [4][4]bool) {
 func main() {
 	start := 0
 	//serialCofig := &serial.Config{
-	//	Name: "COM7",
+	//	Name: os.Getenv("DATACOM_PORT"),
 	//	Baud: 115209,
 	//}
 	//s, err := serial.OpenPort(serialCofig)
@@ -128,6 +128,13 @@ func main() {
 	for {
 		dirpath := "out/" + strconv.Itoa(start)
 		if checkFileExist(dirpath) {
+			fmt.Printf("Found image No. %v \n", start)
+			fmt.Println("waiting complete image")
+			for testfile, err := os.Open(dirpath + ".bmp"); err != nil; {
+				_ = testfile.Close()
+				log.Printf("chk file %v ,%v", testfile, err)
+			}
+			fmt.Println("image complete saved")
 			if found, pos := readimage(dirpath); found == true {
 				// send response to arduino via serial
 				for row := range pos {
@@ -142,9 +149,12 @@ func main() {
 					//for _,err:=s.Write(buffer);err != nil;{
 					//}
 					fmt.Printf("%v\n", buffer)
+
 				}
 			}
 			start++
+			fmt.Println("Process success waiting for next file.")
+			fmt.Println("==========================")
 		}
 	}
 }
