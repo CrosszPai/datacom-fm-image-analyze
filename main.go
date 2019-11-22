@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/disintegration/imaging"
+	"github.com/tarm/serial"
 	"golang.org/x/image/bmp"
 	"log"
 	"os"
@@ -122,15 +123,15 @@ func readimage(s string) (bool, [4][4]bool) {
 func main() {
 	start := 0
 	// setup config
-	//serialCofig := &serial.Config{
-	//	Name: os.Getenv("DATACOM_PORT"),
-	//	Baud: 115209,
-	//}
-	//s, err := serial.OpenPort(serialCofig)
-	//defer s.Close()
-	//if err != nil {
-	//	log.Fatalf("Error occur at open serial port")
-	//}
+	serialCofig := &serial.Config{
+		Name: os.Getenv("DATACOM_PORT"),
+		Baud: 115200,
+	}
+	s, err := serial.OpenPort(serialCofig)
+	defer s.Close()
+	if err != nil {
+		log.Fatalf("Error occur at open serial port")
+	}
 
 	// main program loop
 	for {
@@ -156,8 +157,12 @@ func main() {
 						}
 					}
 					// write 1 image row buffer
-					//for _,err:=s.Write(buffer);err != nil;{
-					//}
+					temp := make([]byte, 4)
+					for _, err := s.Write(buffer); err != nil; {
+
+					}
+					_, _ = s.Read(temp)
+					fmt.Println(temp)
 					fmt.Printf("%v\n", buffer)
 				}
 			}
