@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // check if file is appear in folder but not sure that file is complete writing .
@@ -124,15 +125,18 @@ func main() {
 	start := 0
 	// setup config
 	serialCofig := &serial.Config{
-		Name: os.Getenv("DATACOM_PORT"),
-		Baud: 115200,
+		Name:     "COM15",
+		Baud:     9600,
+		Parity:   0,
+		StopBits: 1,
+		Size:     8,
 	}
 	s, err := serial.OpenPort(serialCofig)
 	defer s.Close()
 	if err != nil {
 		log.Fatalf("Error occur at open serial port")
 	}
-
+	time.Sleep(5 * time.Second)
 	// main program loop
 	for {
 		dirpath := "out/" + strconv.Itoa(start)
@@ -145,7 +149,7 @@ func main() {
 				log.Printf("chk file %v ,%v", testfile, err)
 			}
 			fmt.Println("image complete saved")
-			if found, pos := readimage(dirpath); found == true {
+			if _, pos := readimage(dirpath); true {
 				// send data response to arduino via serial
 				for row := range pos {
 					buffer := make([]byte, 4)
@@ -157,13 +161,14 @@ func main() {
 						}
 					}
 					// write 1 image row buffer
-					temp := make([]byte, 4)
-					for _, err := s.Write(buffer); err != nil; {
-
+					for n := range buffer {
+						b, _ := s.Write([]byte{buffer[n]})
+						temp := make([]byte, b)
+						b, _ = s.Read(temp)
+						fmt.Print(temp[:b])
 					}
-					_, _ = s.Read(temp)
-					fmt.Println(temp)
-					fmt.Printf("%v\n", buffer)
+
+					fmt.Printf("||%v\n", buffer)
 				}
 			}
 			// increase number of file
