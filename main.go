@@ -6,6 +6,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/tarm/serial"
 	"golang.org/x/image/bmp"
+	"image"
 	"log"
 	"os"
 	"strconv"
@@ -32,7 +33,10 @@ func readimage(s string) (bool, [4][4]bool) {
 	}
 	defer reader.Close()
 	found := false
-	im, err := bmp.Decode(reader)
+	var im image.Image
+	for im, err = bmp.Decode(reader); err != nil; {
+
+	}
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
