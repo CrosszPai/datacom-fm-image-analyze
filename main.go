@@ -162,10 +162,7 @@ func main() {
 					}
 					// write 1 image row buffer
 					for n := range buffer {
-						b, _ := s.Write([]byte{buffer[n]})
-						temp := make([]byte, b)
-						b, _ = s.Read(temp)
-						fmt.Print(temp[:b])
+						_, _ = s.Write([]byte{buffer[n]})
 					}
 
 					fmt.Printf("||%v\n", buffer)
