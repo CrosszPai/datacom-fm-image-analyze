@@ -7,24 +7,19 @@ import (
 	"github.com/tarm/serial"
 	"golang.org/x/image/bmp"
 	"image"
+	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
 func getLastestFile() string {
-	var files []string
-	root := "/out"
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		files = append(files, path)
-		return nil
-	})
+	files, err := ioutil.ReadDir("./out")
 	if err != nil {
-		return ""
+		log.Fatal(err)
 	}
-	return files[len(files)-1]
+	return files[len(files)-1].Name()
 }
 
 // check if file is appear in folder but not sure that file is complete writing .
@@ -171,56 +166,57 @@ func main() {
 	//main program loop
 	for {
 		cmd := make([]byte, 1)
-		for state != 1 {
+		if state != 1 {
 			m, _ := s.Read(cmd)
 			fmt.Printf("%v", cmd[:m])
 			if cmd[0] == byte('R') {
 				state = 1
 				break
 			}
-		}
-		filename := strings.Split(getLastestFile(), "\\")[2]
-		dirpath := "out/" + filename
-		if checkFileExist(dirpath) {
-			fmt.Printf("Found image  %v \n", filename)
-			fmt.Println("waiting complete image")
-			//loop until get valid file
-			for testfile, err := os.Open(dirpath); err != nil; {
-				_ = testfile.Close()
-				log.Printf("chk file %v ,%v", testfile, err)
-			}
-			fmt.Println("image complete saved")
-			if found, pos, result := readimage(dirpath); found == true {
-				_, exist := Find(store, result)
-				if !exist {
-					// send data response to arduino via serial
-					for row := range pos {
-						buffer := make([]byte, 4)
-						for col := range pos[row] {
-							if pos[row][col] {
-								buffer[col] = 1
-							} else {
-								buffer[col] = 0
-							}
-						}
-						// write 1 image row buffer if not already has
-						for n := range buffer {
-							b, _ := s.Write([]byte{buffer[n]})
-							temp := make([]byte, b)
-							b, _ = s.Read(temp)
-							fmt.Print(temp[:b])
-						}
-						fmt.Printf("||%v\n", buffer)
-					}
-					store = append(store, result)
-					state = 0
-				} else {
-					fmt.Println("Already get this image process next file . . .")
+		} else {
+			filename := strings.Split(getLastestFile(), "\\")[2]
+			dirpath := "out/" + filename
+			if checkFileExist(dirpath) {
+				fmt.Printf("Found image  %v \n", filename)
+				fmt.Println("waiting complete image")
+				//loop until get valid file
+				for testfile, err := os.Open(dirpath); err != nil; {
+					log.Printf("chk file %v ,%v", testfile, err)
+					_ = testfile.Close()
 				}
+				fmt.Println("image complete saved")
+				if found, pos, result := readimage(dirpath); found == true {
+					_, exist := Find(store, result)
+					if !exist {
+						// send data response to arduino via serial
+						for row := range pos {
+							buffer := make([]byte, 4)
+							for col := range pos[row] {
+								if pos[row][col] {
+									buffer[col] = 1
+								} else {
+									buffer[col] = 0
+								}
+							}
+							// write 1 image row buffer if not already has
+							for n := range buffer {
+								b, _ := s.Write([]byte{buffer[n]})
+								temp := make([]byte, b)
+								b, _ = s.Read(temp)
+								fmt.Print(temp[:b])
+							}
+							fmt.Printf("||%v\n", buffer)
+						}
+						store = append(store, result)
+						state = 0
+					} else {
+						fmt.Println("Already get this image process next file . . .")
+					}
+				}
+				// increase number of file
+				fmt.Println("Process success waiting for next file . . .")
+				fmt.Println("===========================================")
 			}
-			// increase number of file
-			fmt.Println("Process success waiting for next file . . .")
-			fmt.Println("===========================================")
 		}
 	}
 }
