@@ -195,12 +195,14 @@ func main() {
 						}
 						fmt.Printf("||%v\n", buffer)
 					}
+				} else {
+					fmt.Println("Already get this image process next file . . .")
 				}
 			}
 			// increase number of file
 			start++
 			fmt.Println("Process success waiting for next file . . .")
-			fmt.Println("==========================")
+			fmt.Println("===========================================")
 		}
 	}
 }
