@@ -24,9 +24,18 @@ func checkFileExist(filename string) bool {
 	return true
 }
 
+func Find(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
 // read bit map image file and process it into [4][4]bool
 // return true if image match with some pattern and  2 dimension position array that  has true value if color is black
-func readimage(s string) (bool, [4][4]bool) {
+func readimage(s string) (bool, [4][4]bool, string) {
 	reader, err := os.Open(s + ".bmp")
 	if err != nil {
 		log.Fatalf("err:", err)
@@ -58,6 +67,7 @@ func readimage(s string) (bool, [4][4]bool) {
 	black := []uint8{41, 41, 41}
 	//white := []uint8{255, 255, 255}
 	var pos [4][4]bool
+	var result string
 	// map pixel which color value which is higher than black value threshold
 	for y := 0; y < 4; y++ {
 		for x := 0; x < 4; x++ {
@@ -86,6 +96,7 @@ func readimage(s string) (bool, [4][4]bool) {
 		pos[1][0] && pos[2][0] {
 		//fmt.Println("topright")
 		found = true
+		result = "upper"
 	}
 	if pos[0][1] && pos[0][2] &&
 		pos[1][3] && pos[2][3] &&
@@ -93,12 +104,14 @@ func readimage(s string) (bool, [4][4]bool) {
 		!pos[1][0] && !pos[2][0] {
 		//fmt.Println("bottomleft")
 		found = true
+		result = "lower"
 	}
 	if !pos[0][1] && pos[0][2] &&
 		pos[1][3] && pos[2][3] &&
 		!pos[3][1] && pos[3][2] &&
 		!pos[1][0] && !pos[2][0] {
 		//fmt.Println("left")
+		result = "left"
 		found = true
 	}
 	if pos[0][1] && !pos[0][2] &&
@@ -106,6 +119,7 @@ func readimage(s string) (bool, [4][4]bool) {
 		pos[3][1] && !pos[3][2] &&
 		pos[1][0] && pos[2][0] {
 		//fmt.Println("right")
+		result = "right"
 		found = true
 	}
 	if pos[0][1] && pos[0][2] &&
@@ -113,6 +127,7 @@ func readimage(s string) (bool, [4][4]bool) {
 		!pos[3][1] && !pos[3][2] &&
 		pos[1][0] && !pos[2][0] {
 		//fmt.Println("bottom")
+		result = "bottom"
 		found = true
 	}
 	if !pos[0][1] && !pos[0][2] &&
@@ -120,16 +135,18 @@ func readimage(s string) (bool, [4][4]bool) {
 		pos[3][1] && pos[3][2] &&
 		pos[1][0] && !pos[2][0] {
 		//fmt.Println("top")
+		result = "top"
 		found = true
 	}
-	return found, pos
+	return found, pos, result
 }
 
 func main() {
 	start := 0
+	store := make([]string, 3)
 	// setup config
 	serialCofig := &serial.Config{
-		Name:     "COM15",
+		Name:     "COM9",
 		Baud:     9600,
 		Parity:   0,
 		StopBits: 1,
@@ -153,7 +170,7 @@ func main() {
 				log.Printf("chk file %v ,%v", testfile, err)
 			}
 			fmt.Println("image complete saved")
-			if _, pos := readimage(dirpath); true {
+			if found, pos, result := readimage(dirpath); found == true {
 				// send data response to arduino via serial
 				for row := range pos {
 					buffer := make([]byte, 4)
@@ -164,9 +181,13 @@ func main() {
 							buffer[col] = 0
 						}
 					}
-					// write 1 image row buffer
-					for n := range buffer {
-						_, _ = s.Write([]byte{buffer[n]})
+					// write 1 image row buffer if not already has
+					_, exist := Find(store, result)
+					if !exist {
+						store = append(store, result)
+						for n := range buffer {
+							_, _ = s.Write([]byte{buffer[n]})
+						}
 					}
 
 					fmt.Printf("||%v\n", buffer)
