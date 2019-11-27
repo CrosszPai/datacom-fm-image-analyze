@@ -9,14 +9,28 @@ import (
 	"image"
 	"log"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
+func getLastestFile() string {
+	var files []string
+	root := "/out"
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		return ""
+	}
+	return files[len(files)-1]
+}
+
 // check if file is appear in folder but not sure that file is complete writing .
 func checkFileExist(filename string) bool {
-	if _, err := os.Stat(filename + ".bmp"); err != nil {
+	fmt.Println(filename)
+	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
 			return false
 		}
@@ -36,7 +50,7 @@ func Find(slice []string, val string) (int, bool) {
 // read bit map image file and process it into [4][4]bool
 // return true if image match with some pattern and  2 dimension position array that  has true value if color is black
 func readimage(s string) (bool, [4][4]bool, string) {
-	reader, err := os.Open(s + ".bmp")
+	reader, err := os.Open(s)
 	if err != nil {
 		log.Fatalf("err:", err)
 	}
@@ -44,7 +58,6 @@ func readimage(s string) (bool, [4][4]bool, string) {
 	found := false
 	var im image.Image
 	for im, err = bmp.Decode(reader); err != nil; {
-
 	}
 	if err != nil {
 		log.Fatalf("Error: %v", err)
@@ -59,10 +72,6 @@ func readimage(s string) (bool, [4][4]bool, string) {
 	//}
 
 	//fmt.Println("")
-
-	out, _ := os.Create(strings.Split(s, "/")[0] + "/" + "_4x4_" + strings.Split(s, "/")[1] + ".bmp")
-	defer out.Close()
-	_, _ = out.Write(lpp.Bytes())
 	// black value threshold
 	black := []uint8{41, 41, 41}
 	//white := []uint8{255, 255, 255}
@@ -138,13 +147,14 @@ func readimage(s string) (bool, [4][4]bool, string) {
 		result = "top"
 		found = true
 	}
+	fmt.Println("success")
 	return found, pos, result
 }
 
 func main() {
-	start := 0
+	state := 0
 	store := make([]string, 3)
-	// setup config
+	//setup config
 	serialCofig := &serial.Config{
 		Name:     "COM9",
 		Baud:     9600,
@@ -157,15 +167,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error occur at open serial port")
 	}
-	time.Sleep(5 * time.Second)
-	// main program loop
+	time.Sleep(2 * time.Second)
+	//main program loop
 	for {
-		dirpath := "out/" + strconv.Itoa(start)
+		cmd := make([]byte, 1)
+		for state != 1 {
+			m, _ := s.Read(cmd)
+			fmt.Printf("%v", cmd[:m])
+			if cmd[0] == byte('R') {
+				state = 1
+				break
+			}
+		}
+		filename := strings.Split(getLastestFile(), "\\")[2]
+		dirpath := "out/" + filename
 		if checkFileExist(dirpath) {
-			fmt.Printf("Found image No. %v \n", start)
+			fmt.Printf("Found image  %v \n", filename)
 			fmt.Println("waiting complete image")
 			//loop until get valid file
-			for testfile, err := os.Open(dirpath + ".bmp"); err != nil; {
+			for testfile, err := os.Open(dirpath); err != nil; {
 				_ = testfile.Close()
 				log.Printf("chk file %v ,%v", testfile, err)
 			}
@@ -184,23 +204,21 @@ func main() {
 							}
 						}
 						// write 1 image row buffer if not already has
-
-						store = append(store, result)
 						for n := range buffer {
 							b, _ := s.Write([]byte{buffer[n]})
-
 							temp := make([]byte, b)
 							b, _ = s.Read(temp)
 							fmt.Print(temp[:b])
 						}
 						fmt.Printf("||%v\n", buffer)
 					}
+					store = append(store, result)
+					state = 0
 				} else {
 					fmt.Println("Already get this image process next file . . .")
 				}
 			}
 			// increase number of file
-			start++
 			fmt.Println("Process success waiting for next file . . .")
 			fmt.Println("===========================================")
 		}
