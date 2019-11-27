@@ -171,26 +171,30 @@ func main() {
 			}
 			fmt.Println("image complete saved")
 			if found, pos, result := readimage(dirpath); found == true {
-				// send data response to arduino via serial
-				for row := range pos {
-					buffer := make([]byte, 4)
-					for col := range pos[row] {
-						if pos[row][col] {
-							buffer[col] = 1
-						} else {
-							buffer[col] = 0
+				_, exist := Find(store, result)
+				if !exist {
+					// send data response to arduino via serial
+					for row := range pos {
+						buffer := make([]byte, 4)
+						for col := range pos[row] {
+							if pos[row][col] {
+								buffer[col] = 1
+							} else {
+								buffer[col] = 0
+							}
 						}
-					}
-					// write 1 image row buffer if not already has
-					_, exist := Find(store, result)
-					if !exist {
+						// write 1 image row buffer if not already has
+
 						store = append(store, result)
 						for n := range buffer {
-							_, _ = s.Write([]byte{buffer[n]})
-						}
-					}
+							b, _ := s.Write([]byte{buffer[n]})
 
-					fmt.Printf("||%v\n", buffer)
+							temp := make([]byte, b)
+							b, _ = s.Read(temp)
+							fmt.Print(temp[:b])
+						}
+						fmt.Printf("||%v\n", buffer)
+					}
 				}
 			}
 			// increase number of file
